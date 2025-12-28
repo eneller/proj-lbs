@@ -1,0 +1,15 @@
+---
+title: "Topic 8"
+output: html_document
+date: "`r Sys.Date()`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Download data
+from OpenSky https://opensky-network.org/datasets/states/#flights/
+```{r download}
+library(openSkies)
+```
