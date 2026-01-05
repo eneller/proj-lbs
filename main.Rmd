@@ -11,5 +11,76 @@ knitr::opts_chunk$set(echo = TRUE)
 # Download data
 from OpenSky https://opensky-network.org/datasets/states/#flights/
 ```{r download}
-library(openSkies)
-```
+library(dplyr)
+library(lubridate)
+library(readr)
+library(utils)
+
+# -------------------------------
+# Step 1: Define dates
+# -------------------------------
+dates <- seq(as.Date("2022-09-01"), as.Date("2022-09-05"), by = "days")
+
+tmp_dir <- tempdir()
+all_flights <- list()
+
+# -------------------------------
+# Step 2: Download each day's CSV
+# -------------------------------
+for(d in dates) {
+  d <- as.Date(d)
+  
+  # korrekter Dateiname
+  file_name <- paste0("flight_sample_", d, ".csv.gz")
+  url <- paste0("https://s3.opensky-network.org/data-samples/flights/", file_name)
+  
+  message("Downloading: ", url)
+  
+  dest <- file.path(tmp_dir, file_name)
+  
+  tryCatch({
+    download.file(url, dest, mode = "wb")
+    
+    # CSV lesen
+    df <- read_csv(dest, col_types = cols(.default = "c"))
+    all_flights[[length(all_flights)+1]] <- df
+  }, error = function(e) {
+    warning("Failed to download ", file_name)
+  })
+}
+
+# -------------------------------
+# Step 3: Combine all days
+# -------------------------------
+flight_data <- bind_rows(all_flights)
+
+# -------------------------------
+# Step 4: Inspect data
+# -------------------------------
+head(flight_data)
+colnames(flight_data)
+str(flight_data)
+
+if(interactive()) {
+  View(flight_data)
+}
+
+# -------------------------------
+# Step 5: Filter flight BEL40V
+# -------------------------------
+flight_number <- "BEL40V"
+
+if("callsign" %in% colnames(flight_data)) {
+  flight_BEL40V <- flight_data %>%
+    filter(callsign == flight_number)
+  
+  # save
+  write_csv(flight_BEL40V, "flight_BEL40V.csv")
+  
+  # view first row
+  head(flight_BEL40V)
+} else {
+  warning("Column 'callsign' not found in flight_data!")
+}
+``` 
+
