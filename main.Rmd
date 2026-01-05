@@ -30,9 +30,8 @@ all_flights <- list()
 for(d in dates) {
   d <- as.Date(d)
   
-  # korrekter Dateiname
   file_name <- paste0("flight_sample_", d, ".csv.gz")
-  url <- paste0("https://s3.opensky-network.org/data-samples/flights/", file_name)
+  url <- paste0("https://s3.opensky-network.org/data-samples/flightsV5/", file_name)
   
   message("Downloading: ", url)
   
@@ -41,7 +40,7 @@ for(d in dates) {
   tryCatch({
     download.file(url, dest, mode = "wb")
     
-    # CSV lesen
+    # read csv
     df <- read_csv(dest, col_types = cols(.default = "c"))
     all_flights[[length(all_flights)+1]] <- df
   }, error = function(e) {
