@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 # Load Library
-```{r library}
+```{r preamble, echo=FALSE}
 library(dplyr)
 library(lubridate)
 library(readr)
@@ -22,8 +22,7 @@ library(httr)
 library(jsonlite)
 ```
 # Download flights 
-```{r get departures from frankfurt airport without account, include=FALSE}
-#library(openSkies)
+```{r include=FALSE}
 #
 #time_now <- Sys.time()
 #time_one_hour_ago <- time_now - 3600
@@ -36,7 +35,7 @@ library(jsonlite)
 ```
 
 
-```{r openskies oauth, include=FALSE}
+```{r openskies, include=FALSE}
 load_dot_env()
 my_client_id     <- Sys.getenv("OPENSKY_CLIENT_ID")
 my_client_secret <- Sys.getenv("OPENSKY_CLIENT_SECRET")
@@ -81,7 +80,7 @@ if (status_code(data_resp) == 200) {
 
 ```
 
-```{r get last 5 flights}
+```{r last5}
 
 icao24 <- "4bcdf9"
 
@@ -118,7 +117,7 @@ if (status_code(aircraft_resp) == 200) {
 
 # Plot the flights 
 
-```{r get flight route}
+```{r route}
 target_icao <- all_flights$icao24[1]
 
 target_time <- as.numeric(all_flights$firstSeen[1]) 
