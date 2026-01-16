@@ -29,3 +29,5 @@ Use [renv](https://rstudio.github.io/renv/articles/renv.html) to install the cor
 ``` r
 renv::restore()
 ```
+
+[OpenSky](https://opensky-network.org) access also requires credentials placed in a `.env` file, for which an example is provided in `.env.example`.

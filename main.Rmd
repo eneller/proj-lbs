@@ -1,6 +1,8 @@
 ---
 title: "Topic 8"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 date: "`r Sys.Date()`"
 ---
 
@@ -8,8 +10,150 @@ date: "`r Sys.Date()`"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Download data
-from OpenSky https://opensky-network.org/datasets/states/#flights/
-```{r download}
+# Load Library
+```{r preamble, echo=FALSE}
+library(dplyr)
+library(lubridate)
+library(readr)
+library(utils)
 library(openSkies)
+library(dotenv)
+library(httr)
+library(jsonlite)
+```
+# Download flights 
+```{r include=FALSE}
+#
+#time_now <- Sys.time()
+#time_one_hour_ago <- time_now - 3600
+#
+## get departures from frankfurt airport
+#flights <- getAirportDepartures(airport = "EDDF", startTime = time_one_hour_ago, endTime = time_now)
+#
+#print(paste("Found flights:", length(flights)))
+#head(flights)
+```
+
+
+```{r openskies, include=FALSE}
+load_dot_env()
+my_client_id     <- Sys.getenv("OPENSKY_CLIENT_ID")
+my_client_secret <- Sys.getenv("OPENSKY_CLIENT_SECRET")
+
+token_url <- "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token"
+
+token_resp <- POST(
+  token_url,
+  body = list(
+    grant_type = "client_credentials",
+    client_id = my_client_id,
+    client_secret = my_client_secret
+  ),
+  encode = "form"
+)
+
+if (status_code(token_resp) == 200) {
+  my_token <- content(token_resp)$access_token
+  message("Token successfully generated")
+} else {
+  stop(paste("Error while collecting token:", content(token_resp, as = "text")))
+}
+
+time_now <- as.numeric(Sys.time())
+time_one_hour_ago <- time_now - 3600
+
+api_url <- paste0("https://opensky-network.org/api/flights/departure?airport=EDDF&begin=", 
+                  round(time_one_hour_ago), "&end=", round(time_now))
+
+data_resp <- GET(
+  api_url, 
+  add_headers(Authorization = paste("Bearer", my_token))
+)
+
+if (status_code(data_resp) == 200) {
+  departures_df <- fromJSON(content(data_resp, as = "text", encoding = "UTF-8"))
+  print(head(departures_df))
+} else {
+  print(paste("API Error:", status_code(data_resp)))
+  print(content(data_resp, as = "text"))
+}
+
+```
+
+```{r last5}
+
+icao24 <- "4bcdf9"
+
+time_now <- as.numeric(Sys.time())
+time_then <- time_now - (1 * 24 * 60 * 60) 
+
+api_url_aircraft <- paste0("https://opensky-network.org/api/flights/aircraft?icao24=", 
+                           icao24, "&begin=", round(time_then), "&end=", round(time_now))
+
+aircraft_resp <- GET(
+  api_url_aircraft, 
+  add_headers(Authorization = paste("Bearer", my_token))
+)
+
+if (status_code(aircraft_resp) == 200) {
+  all_flights <- fromJSON(content(aircraft_resp, as = "text", encoding = "UTF-8"))
+  
+  if (length(all_flights) > 0) {
+    all_flights <- all_flights[order(all_flights$firstSeen, decreasing = TRUE), ]
+    
+    last_5_flights <- head(all_flights, 5)
+    
+    last_5_flights$firstSeen <- as.POSIXct(last_5_flights$firstSeen, origin="1970-01-01")
+    last_5_flights$lastSeen <- as.POSIXct(last_5_flights$lastSeen, origin="1970-01-01")
+    
+    print(last_5_flights[, c("icao24", "firstSeen", "estDepartureAirport", "estArrivalAirport")])
+  } else {
+    print("No flights in this timespan for this airplane")
+  }
+} else {
+  print(paste("Error:", status_code(aircraft_resp)))
+}
+```
+
+# Plot the flights 
+
+```{r route}
+target_icao <- all_flights$icao24[1]
+
+target_time <- as.numeric(all_flights$firstSeen[1]) 
+
+api_url_track <- paste0("https://opensky-network.org/api/tracks/all?icao24=", 
+                        target_icao, "&time=", target_time)
+
+track_resp <- GET(
+  api_url_track, 
+  add_headers(Authorization = paste("Bearer", my_token))
+)
+
+if (status_code(track_resp) == 200) {
+  track_data <- fromJSON(content(track_resp, as = "text", encoding = "UTF-8"))
+  
+  if (!is.null(track_data$path) && length(track_data$path) > 0) {
+    
+    route_df <- as.data.frame(track_data$path)
+    colnames(route_df) <- c("time", "lat", "lon", "alt", "heading", "on_ground")
+    
+    message("Loading of route successfull! Points: ", nrow(route_df))
+    
+    plot(route_df$lon, route_df$lat, type="o", pch=20, col="blue", 
+         main=paste("Geographic route from", target_icao),
+         xlab="Longitude", ylab="Latitude")
+    
+    plot(route_df$time, route_df$alt, type="l", col="red", lwd=2,
+         main=paste("Altitude profile of", target_icao),
+         xlab="Time (Unix)", ylab="Height (Meter)")
+    
+  } else {
+    print("No path points from api")
+  }
+  
+} else {
+  print(paste("Error while getting the route. Status:", status_code(track_resp)))
+  print(content(track_resp, as = "text"))
+}
 ```
