@@ -10,8 +10,8 @@ date: "`r Sys.Date()`"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Load Library
-```{r preamble, echo=FALSE}
+```{r preamble, message=FALSE}
+# Load Libraries
 library(dplyr)
 library(lubridate)
 library(readr)
@@ -20,26 +20,27 @@ library(openSkies)
 library(dotenv)
 library(httr)
 library(jsonlite)
+
 ```
+
 # Download flights 
-```{r include=FALSE}
-#
-#time_now <- Sys.time()
-#time_one_hour_ago <- time_now - 3600
-#
-## get departures from frankfurt airport
-#flights <- getAirportDepartures(airport = "EDDF", startTime = time_one_hour_ago, endTime = time_now)
-#
-#print(paste("Found flights:", length(flights)))
-#head(flights)
+```{r opensky_lib, include=FALSE}
+
+time_now <- Sys.time()
+time_one_hour_ago <- time_now - 3600
+
+# get departures from frankfurt airport
+flights <- getAirportDepartures(airport = "EDDF", startTime = time_one_hour_ago, endTime = time_now )
+print(paste("Found flights:", length(flights)))
+head(flights)
 ```
 
 
-```{r openskies, include=FALSE}
-load_dot_env()
+```{r opensky_rest, include=FALSE}
+# gets opensky data using the REST API at https://openskynetwork.github.io/opensky-api/rest.html
+
 my_client_id     <- Sys.getenv("OPENSKY_CLIENT_ID")
 my_client_secret <- Sys.getenv("OPENSKY_CLIENT_SECRET")
-
 token_url <- "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token"
 
 token_resp <- POST(
