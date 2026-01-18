@@ -58,6 +58,42 @@
       "Maintainer": "Kirill Müller <kirill@cynkra.com>",
       "Repository": "https://packagemanager.posit.co/cran/latest"
     },
+    "MASS": {
+      "Package": "MASS",
+      "Version": "7.3-65",
+      "Source": "Repository",
+      "Priority": "recommended",
+      "Date": "2025-02-19",
+      "Revision": "$Rev: 3681 $",
+      "Depends": [
+        "R (>= 4.4.0)",
+        "grDevices",
+        "graphics",
+        "stats",
+        "utils"
+      ],
+      "Imports": [
+        "methods"
+      ],
+      "Suggests": [
+        "lattice",
+        "nlme",
+        "nnet",
+        "survival"
+      ],
+      "Authors@R": "c(person(\"Brian\", \"Ripley\", role = c(\"aut\", \"cre\", \"cph\"), email = \"Brian.Ripley@R-project.org\"), person(\"Bill\", \"Venables\", role = c(\"aut\", \"cph\")), person(c(\"Douglas\", \"M.\"), \"Bates\", role = \"ctb\"), person(\"Kurt\", \"Hornik\", role = \"trl\", comment = \"partial port ca 1998\"), person(\"Albrecht\", \"Gebhardt\", role = \"trl\", comment = \"partial port ca 1998\"), person(\"David\", \"Firth\", role = \"ctb\", comment = \"support functions for polr\"))",
+      "Description": "Functions and datasets to support Venables and Ripley, \"Modern Applied Statistics with S\" (4th edition, 2002).",
+      "Title": "Support Functions and Datasets for Venables and Ripley's MASS",
+      "LazyData": "yes",
+      "ByteCompile": "yes",
+      "License": "GPL-2 | GPL-3",
+      "URL": "http://www.stats.ox.ac.uk/pub/MASS4/",
+      "Contact": "<MASS@stats.ox.ac.uk>",
+      "NeedsCompilation": "yes",
+      "Author": "Brian Ripley [aut, cre, cph], Bill Venables [aut, cph], Douglas M. Bates [ctb], Kurt Hornik [trl] (partial port ca 1998), Albrecht Gebhardt [trl] (partial port ca 1998), David Firth [ctb] (support functions for polr)",
+      "Maintainer": "Brian Ripley <Brian.Ripley@R-project.org>",
+      "Repository": "CRAN"
+    },
     "R6": {
       "Package": "R6",
       "Version": "2.6.1",
@@ -2059,6 +2095,30 @@
       "NeedsCompilation": "no",
       "Repository": "https://packagemanager.posit.co/cran/latest"
     },
+    "plotrix": {
+      "Package": "plotrix",
+      "Version": "3.8-13",
+      "Source": "Repository",
+      "Title": "Various Plotting Functions",
+      "Authors@R": "c( person(\"Jim\", \"Lemon\", role = \"aut\"), person(\"Ben\", \"Bolker\", role = \"ctb\"), person(\"Sander\", \"Oom\", role = \"ctb\"), person(\"Eduardo\", \"Klein\", role = \"ctb\"), person(\"Barry\", \"Rowlingson\", role = \"ctb\"), person(\"Hadley\", \"Wickham\", role = \"ctb\"), person(\"Anupam\", \"Tyagi\", role = \"ctb\"), person(\"Olivier\", \"Eterradossi\", role = \"ctb\"), person(\"Gabor\", \"Grothendieck\", role = \"ctb\"), person(\"Michael\", \"Toews\", role = \"ctb\"), person(\"John\", \"Kane\", role = \"ctb\"), person(\"Rolf\", \"Turner\", role = \"ctb\"), person(\"Carl\", \"Witthoft\", role = \"ctb\"), person(\"Julian\", \"Stander\", role = \"ctb\"), person(\"Thomas\", \"Petzoldt\", role = \"ctb\"), person(\"Remko\", \"Duursma\", role = \"ctb\"), person(\"Elisa\", \"Biancotto\", role = \"ctb\"), person(\"Ofir\", \"Levy\", role = \"ctb\"), person(\"Christophe\", \"Dutang\", role = \"ctb\"), person(\"Peter\", \"Solymos\", role = \"ctb\"), person(\"Robby\", \"Engelmann\", role = \"ctb\"), person(\"Michael\", \"Hecker\", role = \"ctb\"), person(\"Felix\", \"Steinbeck\", role = \"ctb\"), person(\"Hans\", \"Borchers\", role = \"ctb\"), person(\"Henrik\", \"Singmann\", role = \"ctb\"), person(\"Ted\", \"Toal\", role = \"ctb\"), person(\"Derek\", \"Ogle\", role = \"ctb\"), person(\"Darshan\", \"Baral\", role = \"ctb\"), person(\"Ulrike\", \"Groemping\", role = \"ctb\"), person(\"Bill\", \"Venables\", role = \"ctb\"), person(family = \"The CRAN Team\", role = \"ctb\"), person(\"Duncan\", \"Murdoch\", email = \"murdoch.duncan@gmail.com\", role = c(\"ctb\", \"cre\")))",
+      "Imports": [
+        "grDevices",
+        "graphics",
+        "stats",
+        "utils"
+      ],
+      "Description": "Lots of plots, various labeling, axis and color scaling functions. The author/maintainer died in September 2023.",
+      "License": "GPL (>= 2)",
+      "NeedsCompilation": "no",
+      "Depends": [
+        "R (>= 3.5.0)"
+      ],
+      "Repository": "CRAN",
+      "URL": "https://plotrix.github.io/plotrix/, https://github.com/plotrix/plotrix",
+      "BugReports": "https://github.com/plotrix/plotrix/issues",
+      "Author": "Jim Lemon [aut], Ben Bolker [ctb], Sander Oom [ctb], Eduardo Klein [ctb], Barry Rowlingson [ctb], Hadley Wickham [ctb], Anupam Tyagi [ctb], Olivier Eterradossi [ctb], Gabor Grothendieck [ctb], Michael Toews [ctb], John Kane [ctb], Rolf Turner [ctb], Carl Witthoft [ctb], Julian Stander [ctb], Thomas Petzoldt [ctb], Remko Duursma [ctb], Elisa Biancotto [ctb], Ofir Levy [ctb], Christophe Dutang [ctb], Peter Solymos [ctb], Robby Engelmann [ctb], Michael Hecker [ctb], Felix Steinbeck [ctb], Hans Borchers [ctb], Henrik Singmann [ctb], Ted Toal [ctb], Derek Ogle [ctb], Darshan Baral [ctb], Ulrike Groemping [ctb], Bill Venables [ctb], The CRAN Team [ctb], Duncan Murdoch [ctb, cre]",
+      "Maintainer": "Duncan Murdoch <murdoch.duncan@gmail.com>"
+    },
     "plyr": {
       "Package": "plyr",
       "Version": "1.8.9",
@@ -2547,6 +2607,37 @@
       "Maintainer": "Thomas Lin Pedersen <thomas.pedersen@posit.co>",
       "Repository": "https://packagemanager.posit.co/cran/latest"
     },
+    "signal": {
+      "Package": "signal",
+      "Version": "1.8-1",
+      "Source": "Repository",
+      "Title": "Signal Processing",
+      "Date": "2024-06-13",
+      "Authors@R": "c(person(\"Uwe\", \"Ligges\", role = c(\"aut\", \"cre\"), email=\"ligges@statistik.tu-dortmund.de\", comment = \"new maintainer\"), person(\"Tom\", \"Short\", role = \"aut\", email = \"tshort@eprisolutions.com\", comment=\"port to R\"), person(\"Paul\", \"Kienzle\", role = \"aut\", comment=\"majority of the original sources\"), person(\"Sarah\", \"Schnackenberg\", role = \"ctb\", comment=\"various test cases and bug fixes\"), person(\"David\", \"Billinghurst\", role = \"ctb\"), person(\"Hans-Werner\", \"Borchers\", role = \"ctb\"), person(\"Andre\", \"Carezia\", role = \"ctb\"), person(\"Pascal\", \"Dupuis\", role = \"ctb\"), person(\"John W.\", \"Eaton\", role = \"ctb\"), person(\"E.\", \"Farhi\", role = \"ctb\"), person(\"Kai\", \"Habel\", role = \"ctb\"), person(\"Kurt\", \"Hornik\", role = \"ctb\"), person(\"Sebastian\", \"Krey\", role = \"ctb\"), person(\"Bill\", \"Lash\", role = \"ctb\"), person(\"Friedrich\", \"Leisch\", role = \"ctb\"), person(\"Olaf\", \"Mersmann\", role = \"ctb\"), person(\"Paulo\", \"Neis\", role = \"ctb\"), person(\"Jaakko\", \"Ruohio\", role = \"ctb\"), person(\"Julius O.\", \"Smith III\", role = \"ctb\"),                   \t    person(\"Doug\", \"Stewart\", role = \"ctb\"), person(\"Andreas\", \"Weingessel\", role = \"ctb\"))",
+      "Depends": [
+        "R (>= 3.5.0)"
+      ],
+      "Imports": [
+        "MASS",
+        "graphics",
+        "grDevices",
+        "stats",
+        "utils"
+      ],
+      "Suggests": [
+        "pracma"
+      ],
+      "Enhances": [
+        "matlab"
+      ],
+      "Description": "A set of signal processing functions originally written for 'Matlab' and 'Octave'. Includes filter generation utilities, filtering functions, resampling routines, and visualization of filter models. It also includes interpolation functions.",
+      "License": "GPL-2",
+      "URL": "https://signal.R-forge.R-project.org",
+      "NeedsCompilation": "yes",
+      "Author": "Uwe Ligges [aut, cre] (new maintainer), Tom Short [aut] (port to R), Paul Kienzle [aut] (majority of the original sources), Sarah Schnackenberg [ctb] (various test cases and bug fixes), David Billinghurst [ctb], Hans-Werner Borchers [ctb], Andre Carezia [ctb], Pascal Dupuis [ctb], John W. Eaton [ctb], E. Farhi [ctb], Kai Habel [ctb], Kurt Hornik [ctb], Sebastian Krey [ctb], Bill Lash [ctb], Friedrich Leisch [ctb], Olaf Mersmann [ctb], Paulo Neis [ctb], Jaakko Ruohio [ctb], Julius O. Smith III [ctb], Doug Stewart [ctb], Andreas Weingessel [ctb]",
+      "Maintainer": "Uwe Ligges <ligges@statistik.tu-dortmund.de>",
+      "Repository": "CRAN"
+    },
     "ssh": {
       "Package": "ssh",
       "Version": "0.9.4",
@@ -2917,6 +3008,48 @@
       "Author": "Yihui Xie [aut, cre, cph] (ORCID: <https://orcid.org/0000-0003-0645-5666>), Posit Software, PBC [cph, fnd], Christophe Dervieux [ctb] (ORCID: <https://orcid.org/0000-0003-4474-2498>), Devon Ryan [ctb] (ORCID: <https://orcid.org/0000-0002-8549-0971>), Ethan Heinzen [ctb], Fernando Cagua [ctb]",
       "Maintainer": "Yihui Xie <xie@yihui.name>",
       "Repository": "https://packagemanager.posit.co/cran/latest"
+    },
+    "trajr": {
+      "Package": "trajr",
+      "Version": "1.5.1",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Animal Trajectory Analysis",
+      "Date": "2023-11-28",
+      "Authors@R": "person(\"Jim\", \"McLean\", email = \"jim_mclean@optusnet.com.au\", role = c(\"aut\", \"cre\"))",
+      "Description": "A toolbox to assist with statistical analysis of animal trajectories. It provides simple access to algorithms for calculating and assessing a variety of  characteristics such as speed and acceleration, as well as multiple measures of  straightness or tortuosity. Some support is provided for 3-dimensional trajectories.  McLean & Skowron Volponi (2018) <doi:10.1111/eth.12739>.",
+      "License": "MIT + file LICENSE",
+      "URL": "https://github.com/JimMcL/trajr",
+      "BugReports": "https://github.com/JimMcL/trajr/issues",
+      "Encoding": "UTF-8",
+      "Imports": [
+        "signal",
+        "utils",
+        "stats",
+        "graphics",
+        "plotrix",
+        "grDevices"
+      ],
+      "RoxygenNote": "7.2.3",
+      "Suggests": [
+        "knitr",
+        "rmarkdown",
+        "testthat",
+        "readr",
+        "tcltk",
+        "sp",
+        "MASS",
+        "covr"
+      ],
+      "VignetteBuilder": "knitr",
+      "BuildVignettes": "true",
+      "NeedsCompilation": "no",
+      "Author": "Jim McLean [aut, cre]",
+      "Maintainer": "Jim McLean <jim_mclean@optusnet.com.au>",
+      "Depends": [
+        "R (>= 3.5.0)"
+      ],
+      "Repository": "CRAN"
     },
     "tzdb": {
       "Package": "tzdb",
