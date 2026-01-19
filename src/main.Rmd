@@ -20,7 +20,7 @@ library(openSkies)
 library(dotenv)
 library(httr)
 library(jsonlite)
-
+library(trajr)
 ```
 
 # Download flights 
