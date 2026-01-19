@@ -43,6 +43,7 @@ flights <- getFlights(icao,Sys.time(), creds)
 # TODO map from all available flights to tracks
 query <- list(icao24= icao, time=as.numeric(flights[[1]][["departure_time"]]))
 
+# can get tracks for up to 30 days in the past
 response <-makeAuthenticatedRequest('tracks/all',query, creds)
 track_data <- fromJSON(content(response, as = "text", encoding = "UTF-8"))
 if (!is.null(track_data$path) && length(track_data$path) > 0) {
@@ -63,4 +64,31 @@ if (!is.null(track_data$path) && length(track_data$path) > 0) {
   } else {
     print("No path points from api")
   }
+```
+
+# GUI selection
+```{r gui}
+icaos <- lapply(departures, function(x) x[["ICAO24"]])
+options <- unlist(icaos) # tcltk needs a character vector
+
+# Create a GUI list selection
+listSelect <- function(options){
+  selected_option <- NULL
+  tryCatch({
+    selected_option <- select.list(
+      title = "Select an aircraft",
+      choices = options,
+      preselect = NULL,
+      multiple = FALSE,
+      graphics = TRUE
+    )
+  }, error = function(w) {
+    message('No GUI available')
+    }
+  )
+  if (nzchar(selected_option)){
+    return(selected_option)
+  }
+  return(options[1])
+}
 ```
