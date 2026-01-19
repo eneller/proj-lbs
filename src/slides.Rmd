@@ -1,0 +1,33 @@
+---
+title: "Topic 8"
+date: "`r Sys.Date()`"
+output: beamer_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+# {cat, child="../README.md"}
+```
+
+## Task
+Develop an R-based software, which will perform the following tasks:
+
+1.  download from the OpenSky Network online database the observations of the trajectory of a randomly selected aircraft on a randomly selected flight over at least five days, in uninterrupted continuity (1)
+
+2.  perform the selections in the graphical user interface (GUI) of your R script,
+
+3.  determine the characteristics of each trajectory according to the parameters: diffusion distance, straightness, duration of travel, mean travel velocity and fractal dimension (2),
+
+4.  using the R library trajr, (4) perform basic statistical analysis of the parameters of daily trajectories from (3): arithmetic mean, variance, quartiles, boxplot, estimate of the density function of the experimental statistical distribution, analyze and interpret them.
+
+
+## Methodology
+
+1. acquire data using the OpenSky API
+
+2. use 
+
+## Contribution
+
+- extended functionality of the `openSkies` R package and created a merge request
+
