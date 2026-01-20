@@ -23,11 +23,20 @@ Develop an R-based software, which will perform the following tasks:
 
 ## Methodology
 
-1. acquire data using the OpenSky API
+1. acquire data using the OpenSky API bindings in the `openSkies` R package
 
-2. use 
+2. use `tcltk` and `shiny` for GUI and Web Interface
+
+3. calculate required parameters using `trajr`
+
+4. calculate descriptive statistics
 
 ## Contribution
 
-- extended functionality of the `openSkies` R package and created a merge request
+- extended functionality of the `openSkies` R package and created a merge request in the original repository
 
+- created a web app to display stats, density functions and boxplots
+
+---
+
+![web interface](web.png)
