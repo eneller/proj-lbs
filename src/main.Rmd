@@ -80,6 +80,7 @@ library(shiny)
 # Implementation
 
 The following section will demonstrate the implementation of the methodology using R code snippets.
+
 The full analysis is also available in the `shiny` web interface.
 
 ## API Authentication
@@ -93,6 +94,7 @@ to [eneller/openSkies](https://github.com/eneller/openSkies/) and made several
 [pull request](https://github.com/Rafael-Ayala/openSkies/pull/4).
 Our contributions include refactoring and streamlining authenticated requests to use the `makeAuthenticatedRequest()` function used below
 and store the token obtained by initial authentication in a `credentials` object obtained from the new `getCredentials()` function.
+
 We further adjusted the front-facing functions to accept either _username + password_ or _client ID + secret_
 where applicable using the new credentials object.
 
@@ -210,6 +212,7 @@ if (!is.null(route_df)) {
   cat("Insufficient data for altitude analysis\n")
 }
 ```
+
 # Results
 
 ## Trajectory Metrics
@@ -357,6 +360,8 @@ if (length(departures) > 0) {
 The following table presents computed metrics for all successfully analyzed flights.
 
 ```{r demo-all-stats-table, purl=FALSE, echo=FALSE}
+# FIXME we should display several flights from the same aircraft as stated in the requirements
+# not different aircraft's flights
 if (!is.null(all_flights_stats)) {
   display_stats <- all_flights_stats
   display_stats$diffusion_distance_km <- round(display_stats$diffusion_distance_km, 2)
@@ -383,9 +388,6 @@ such as
 - standard deviation
 - interquartile range
 ```{r trajectory-summary}
-# Statistical Helper Functions
-
-# Get parameter names and labels for trajectory statistics
 getTrajectoryParams <- function() {
   list(
     params = c("diffusion_distance_km", "straightness", "duration_min", 
@@ -407,12 +409,12 @@ calculateStatsSummary <- function(trajectory_stats_df) {
     data.frame(
       Parameter = p$labels[i],
       N = length(x),
-      Mean = round(mean(x), 4),
-      Variance = round(var(x), 4),
-      Std_Dev = round(sd(x), 4),
-      Q1 = round(quantile(x, 0.25), 4),
-      Median = round(median(x), 4),
-      Q3 = round(quantile(x, 0.75), 4)
+      Mean = round(mean(x), 1),
+      Variance = round(var(x), 1),
+      Std_Dev = round(sd(x), 1),
+      Q1 = round(quantile(x, 0.25), 1),
+      Median = round(median(x), 1),
+      Q3 = round(quantile(x, 0.75), 1)
     )
   })
   
@@ -424,6 +426,7 @@ calculateStatsSummary <- function(trajectory_stats_df) {
 The `calculateStatsSummary()` function computes central tendency and dispersion measures for each trajectory parameter.
 
 ```{r demo-summary-stats, purl=FALSE, echo=FALSE}
+# FIXME first table column broken
 if (!is.null(all_flights_stats) && nrow(all_flights_stats) >= 2) {
   summary_stats <- calculateStatsSummary(all_flights_stats)
   knitr::kable(summary_stats, caption = "Descriptive Statistics Summary")
