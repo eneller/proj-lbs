@@ -27,9 +27,11 @@ Develop an R-based software, which will perform the following tasks:
 
 2. use `tcltk` and `shiny` for GUI and Web Interface
 
-3. calculate required parameters using `trajr`
+3. show an interactive map using leaflet
 
-4. calculate descriptive statistics
+4. calculate required parameters using `trajr`
+
+5. calculate descriptive statistics
 
 ## Contribution
 

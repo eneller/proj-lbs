@@ -15,29 +15,106 @@ isArtifact <- function(){
 }
 ```
 
-```{r preamble, message=FALSE, include=FALSE}
-# Load Libraries
+# Abstract
+
+This project implements an R-based application for the retrieval, processing, and statistical analysis of aircraft trajectories. Flight data is obtained from the OpenSky Network API, transformed into analyzable trajectory objects using the `trajr` package, and subsequently characterized using established movement ecology metrics. The methodology enables quantitative comparison of flight paths through parameters such as path length, straightness index, and fractal dimension.
+
+# Introduction
+
+## Background
+
+The analysis of movement trajectories constitutes a fundamental aspect of spatial data science, with applications ranging from animal behavior studies to transportation network optimization. In the context of aviation, trajectory analysis provides insights into flight efficiency, airspace utilization, and routing patterns.
+
+## Objectives
+
+The primary objectives of this project are:
+
+1. **Data Acquisition**: Implement robust methods for retrieving real-time flight trajectory data from the OpenSky Network
+2. **Trajectory Characterization**: Apply established metrics from movement ecology to quantify flight path properties
+3. **Statistical Analysis**: Perform comparative analysis across multiple flights to identify patterns and distributions
+
+## Theoretical Framework
+
+The `trajr` package, originally developed for animal movement analysis, provides a comprehensive toolkit for trajectory characterization. Key metrics employed in this analysis include:
+
+- **Path Length**: Total distance traveled along the trajectory
+- **Diffusion Distance**: Euclidean displacement from origin to destination
+- **Straightness Index**: Ratio of diffusion distance to path length (range 0-1)
+- **Fractal Dimension**: Measure of path complexity (1 = straight line, approaching 2 = space-filling curve)
+
+# Methodology
+
+## Data Source
+
+Flight trajectory data is obtained from the OpenSky Network, a community-based receiver network providing open access to air traffic surveillance data. The API provides:
+
+- Aircraft state vectors (position, velocity, heading)
+- Historical flight tracks
+- Airport departure and arrival information
+
+## Data Processing Pipeline
+
+The analysis workflow consists of the following stages:
+
+1. **Authentication**: Establish connection to OpenSky API using credentials
+2. **Data Acquisition**: Retrieve departure information for specified airport and time window
+3. **Track Retrieval**: Obtain detailed waypoint data for individual flights
+4. **Coordinate Transformation**: Convert geographic coordinates to metric distances
+5. **Trajectory Construction**: Create `trajr` trajectory objects for analysis
+6. **Statistical Computation**: Calculate trajectory metrics and aggregate statistics
+
+## Libraries
+The following libraries were included for convenience and backend handling. 
+The packages more central to the task, such as `openSkies` and `trajr` are explicitly mentioned in the text.
+```{r preamble, message=FALSE}
 library(dplyr)
 library(lubridate)
 library(readr)
 library(utils)
-library(openSkies)
 library(dotenv)
 library(httr)
 library(jsonlite)
-library(trajr)
 library(shiny)
-library(leaflet)
 ```
 
-```{r opensky, include=FALSE}
+# Implementation
+
+The following section will demonstrate the implementation of the methodology using R code snippets.
+The full analysis is also available in the `shiny` web interface.
+
+## API Authentication
+
+Authentication with https://opensky-network.org/ was supposed to be provided by the `openSkies` R package.
+The API provider however had deprecated username + password authentication for the API in 2025-03, leading us to first work with the
+REST API manually.
+While working on the manual API code, we however already forked the original package at [Rafael-Ayala/openSkies](https://github.com/Rafael-Ayala/openSkies)
+to [eneller/openSkies](https://github.com/eneller/openSkies/) and made several
+[changes](https://github.com/Rafael-Ayala/openSkies/issues/3) that were later included in a
+[pull request](https://github.com/Rafael-Ayala/openSkies/pull/4).
+Our contributions include refactoring and streamlining authenticated requests to use the `makeAuthenticatedRequest()` function used below
+and store the token obtained by initial authentication in a `credentials` object obtained from the new `getCredentials()` function.
+We further adjusted the front-facing functions to accept either _username + password_ or _client ID + secret_
+where applicable using the new credentials object.
+
+```{r auth, include=FALSE}
+library(openSkies)
 # Openskies API Functions 
 
-time_now <- Sys.time()
 creds <- getCredentials(
   client_id = Sys.getenv('OPENSKY_CLIENT_ID'),
   client_secret = Sys.getenv('OPENSKY_CLIENT_SECRET'))
 
+```
+
+## Data Acquisition
+In the code below, the new `makeAuthenticatedRequests()` is also used to make requests to the `tracks/all` endpoint for which no
+official function is provided by `openSkies` as that endpoint is still considered experimental at the time of writing.
+We use this endpoint in `getAircraftTrack()` to obtain the track data that is used for all further trajectory calculations.
+
+In order to request the track from the API, we first need to get a list of flights for an aircraft using 
+`openSkies::getAircraftFlights()` in our convenience function `getFlights()`.
+
+```{r get-data}
 # Get flights for a specific aircraft from OpenSky API
 getFlights <- function(icao, time, creds){
   flights <-getAircraftFlights(icao, startTime =  time - days(1), endTime = time, credentials = creds )
@@ -56,11 +133,14 @@ getAircraftTrack <- function(icao, time, creds) {
   }
   return(NULL)
 }
-
-
 ```
+## Parameter Calculation
+We then calculate several basic parameters from the route, such as time and distance, that are then used to
+construct an object in `getTrajFromRoute()` that can later be used with `trajr`.
 
-```{r trajectory-functions, include=FALSE}
+```{r trajectory-functions}
+library(trajr)
+
 # Trajectory Conversion Functions
 
 # Convert route to distance in meters
@@ -90,6 +170,52 @@ getTrajFromRoute <- function(route_df) {
   return(trj)
 }
 
+```
+
+The altitude profile reveals distinct flight phases: climb, cruise, and descent. This temporal representation provides insight into vertical movement patterns.
+
+```{r demo-altitude-plot, fig.width=7, fig.height=4, purl=FALSE, echo=FALSE}
+time_now <- Sys.time()
+departures <- getAirportDepartures(
+  airport = "EDDF",
+  startTime = time_now - hours(2),
+  endTime = time_now - hours(1),
+  credentials = creds
+)
+cat("Departures retrieved:", length(departures), "\n")
+route_df <- NULL
+icao <- "N/A"
+
+if (length(departures) > 0) {
+  for (i in seq_along(departures)) {
+    icao <- departures[[i]][["ICAO24"]]
+    dep_time <- departures[[i]][["departure_time"]]
+    route_df <- getAircraftTrack(icao, dep_time, creds)
+    if (!is.null(route_df) && nrow(route_df) >= 3) {
+      cat("Aircraft ICAO24:", icao, "\n")
+      cat("Track points acquired:", nrow(route_df), "\n")
+      break
+    }
+    Sys.sleep(1)
+  }
+}
+
+if (!is.null(route_df)) {
+  time_minutes <- (route_df$time - route_df$time[1]) / 60
+  plot(time_minutes, route_df$alt, type = "l", col = "red", lwd = 2,
+       main = paste("Altitude Profile -", icao),
+       xlab = "Elapsed Time (min)", ylab = "Barometric Altitude (m)")
+  grid()
+} else {
+  cat("Insufficient data for altitude analysis\n")
+}
+```
+# Results
+
+## Trajectory Metrics
+For each obtained trajectory, we first calculate the following metrics:
+duration, length, diffusion distance, straightness index, mean velocity and fractal dimension.
+```{r trajectory-metrics}
 # Calculate trajectory characteristics
 # Input: either route_df (data.frame with lat/lon) or trj (trajr object)
 # format: "row" for batch analysis (one row per flight), "table" for single flight display
@@ -188,7 +314,75 @@ getAircraftTrajectories <- function(icao, time, creds, days = 5){
 }
 ```
 
-```{r stat-functions, include=FALSE}
+```{r demo-multiple-tracks, purl=FALSE, echo=FALSE, include=FALSE}
+flight_data <- list()
+successful_flights <- 0
+
+if (length(departures) > 0) {
+  max_attempts <- min(10, length(departures))
+  
+  for (i in seq_len(max_attempts)) {
+    icao_temp <- departures[[i]][["ICAO24"]]
+    dep_time_temp <- departures[[i]][["departure_time"]]
+    
+    route_df_temp <- getAircraftTrack(icao_temp, dep_time_temp, creds)
+    
+    if (!is.null(route_df_temp) && nrow(route_df_temp) >= 3) {
+      stats <- calculateTrajectoryStats(route_df_temp, icao = icao_temp, format = "row")
+      if (!is.null(stats)) {
+        flight_data[[length(flight_data) + 1]] <- stats
+        successful_flights <- successful_flights + 1
+        cat("Flight", successful_flights, "| ICAO:", icao_temp, 
+            "| Waypoints:", nrow(route_df_temp), "\n")
+      }
+    }
+    
+    if (successful_flights >= 5) break
+  }
+  
+  if (length(flight_data) > 0) {
+    all_flights_stats <- do.call(rbind, flight_data)
+    cat("\nSample size (n):", nrow(all_flights_stats), "flights\n")
+  } else {
+    all_flights_stats <- NULL
+    cat("No valid trajectories obtained\n")
+  }
+} else {
+  all_flights_stats <- NULL
+  cat("No departure data available\n")
+}
+```
+
+
+The following table presents computed metrics for all successfully analyzed flights.
+
+```{r demo-all-stats-table, purl=FALSE, echo=FALSE}
+if (!is.null(all_flights_stats)) {
+  display_stats <- all_flights_stats
+  display_stats$diffusion_distance_km <- round(display_stats$diffusion_distance_km, 2)
+  display_stats$path_length_km <- round(display_stats$path_length_km, 2)
+  display_stats$straightness <- round(display_stats$straightness, 4)
+  display_stats$duration_min <- round(display_stats$duration_min, 1)
+  display_stats$mean_velocity_kmh <- round(display_stats$mean_velocity_kmh, 1)
+  display_stats$fractal_dimension <- round(display_stats$fractal_dimension, 4)
+  
+  knitr::kable(display_stats, caption = "Computed Trajectory Metrics",
+               col.names = c("ICAO24", "Displacement (km)", "Path Length (km)", 
+                           "Straightness", "Duration (min)", "Velocity (km/h)", "Fractal Dim."))
+} else {
+  cat("No data available for tabulation\n")
+}
+```
+
+## Trajectory Statistics
+To enable statistical inference, trajectory data is collected for multiple flights.
+We then calculate basic descriptive statistics for the metrics we obtained earlier,
+such as
+- mean
+- median
+- standard deviation
+- interquartile range
+```{r trajectory-summary}
 # Statistical Helper Functions
 
 # Get parameter names and labels for trajectory statistics
@@ -226,31 +420,22 @@ calculateStatsSummary <- function(trajectory_stats_df) {
 }
 ```
 
-```{r viz-functions, include=FALSE}
-# Visualization Functions
 
-# Create interactive map with leaflet
-createInteractiveMap <- function(route) {
-  leaflet(route) %>%
-    addTiles() %>%
-    addPolylines(lng=~lon, lat=~lat, color="blue", weight=3, opacity=0.8) %>%
-    addCircleMarkers(
-    lng = ~lon[1],
-    lat = ~lat[1],
-    color = "green",
-    radius = 6,
-    popup = "Origin"
-  ) %>%
-  addCircleMarkers(
-    lng = ~lon[nrow(route)],
-    lat = ~lat[nrow(route)],
-    color = "red",
-    radius = 6,
-    popup = "Destination"
-  )
+The `calculateStatsSummary()` function computes central tendency and dispersion measures for each trajectory parameter.
+
+```{r demo-summary-stats, purl=FALSE, echo=FALSE}
+if (!is.null(all_flights_stats) && nrow(all_flights_stats) >= 2) {
+  summary_stats <- calculateStatsSummary(all_flights_stats)
+  knitr::kable(summary_stats, caption = "Descriptive Statistics Summary")
+} else {
+  cat("Minimum sample size (n >= 2) not met\n")
 }
+```
 
-# Create boxplots for trajectory statistics
+## Visualisation
+Boxplots provide a robust visualization of parameter distributions, displaying median, interquartile range, and potential outliers. The red diamond indicates the arithmetic mean.
+
+```{r vis-boxplot}
 createBoxplots <- function(trajectory_stats_df) {
   p <- getTrajectoryParams()
   
@@ -264,8 +449,20 @@ createBoxplots <- function(trajectory_stats_df) {
   }
   par(mfrow = c(1, 1))
 }
+```
 
-# Create density plots for trajectory statistics
+```{r demo-boxplot, fig.width=10, fig.height=8, purl=FALSE, echo=FALSE}
+if (!is.null(all_flights_stats) && nrow(all_flights_stats) >= 2) {
+  createBoxplots(all_flights_stats)
+} else {
+  cat("Minimum sample size (n >= 2) not met\n")
+}
+```
+
+
+Density plots employ kernel density estimation to approximate the probability distribution of each parameter. Vertical lines indicate mean (red, dashed) and median (green, dotted).
+
+```{r vis-density}
 createDensityPlots <- function(trajectory_stats_df) {
   p <- getTrajectoryParams()
   
@@ -282,8 +479,19 @@ createDensityPlots <- function(trajectory_stats_df) {
   }
   par(mfrow = c(1, 1))
 }
+```
 
-# Create histograms for trajectory statistics
+```{r demo-density, fig.width=10, fig.height=8, purl=FALSE, echo=FALSE}
+if (!is.null(all_flights_stats) && nrow(all_flights_stats) >= 3) {
+  createDensityPlots(all_flights_stats)
+} else {
+  cat("Minimum sample size (n >= 3) not met for density estimation\n")
+}
+```
+
+Histograms with overlaid density curves provide an alternative visualization of parameter distributions.
+
+```{r vis-histogram}
 createHistograms <- function(trajectory_stats_df) {
   p <- getTrajectoryParams()
   
@@ -298,8 +506,20 @@ createHistograms <- function(trajectory_stats_df) {
   }
   par(mfrow = c(1, 1))
 }
+```
 
-# Generate interpretation text for trajectory statistics
+```{r demo-histogram, fig.width=10, fig.height=8, purl=FALSE, echo=FALSE}
+if (!is.null(all_flights_stats) && nrow(all_flights_stats) >= 3) {
+  createHistograms(all_flights_stats)
+} else {
+  cat("Minimum sample size (n >= 3) not met for histogram analysis\n")
+}
+```
+
+
+The `generateInterpretation()` function provides contextual analysis of the computed trajectory metrics.
+
+```{r vis-interpretation, include=FALSE}
 generateInterpretation <- function(trajectory_stats_df) {
   df <- trajectory_stats_df
   
@@ -351,294 +571,36 @@ generateInterpretation <- function(trajectory_stats_df) {
 }
 ```
 
-
-# Abstract
-
-This project implements an R-based application for the retrieval, processing, and statistical analysis of aircraft trajectories. Flight data is obtained from the OpenSky Network API, transformed into analyzable trajectory objects using the `trajr` package, and subsequently characterized using established movement ecology metrics. The methodology enables quantitative comparison of flight paths through parameters such as path length, straightness index, and fractal dimension.
-
-# Introduction
-
-## Background
-
-The analysis of movement trajectories constitutes a fundamental aspect of spatial data science, with applications ranging from animal behavior studies to transportation network optimization. In the context of aviation, trajectory analysis provides insights into flight efficiency, airspace utilization, and routing patterns.
-
-## Objectives
-
-The primary objectives of this project are:
-
-1. **Data Acquisition**: Implement robust methods for retrieving real-time flight trajectory data from the OpenSky Network
-2. **Trajectory Characterization**: Apply established metrics from movement ecology to quantify flight path properties
-3. **Statistical Analysis**: Perform comparative analysis across multiple flights to identify patterns and distributions
-
-## Theoretical Framework
-
-The `trajr` package, originally developed for animal movement analysis, provides a comprehensive toolkit for trajectory characterization. Key metrics employed in this analysis include:
-
-- **Path Length**: Total distance traveled along the trajectory
-- **Diffusion Distance**: Euclidean displacement from origin to destination
-- **Straightness Index**: Ratio of diffusion distance to path length (range 0-1)
-- **Fractal Dimension**: Measure of path complexity (1 = straight line, approaching 2 = space-filling curve)
-
-# Methodology
-
-## Data Source
-
-Flight trajectory data is obtained from the OpenSky Network, a community-based receiver network providing open access to air traffic surveillance data. The API provides:
-
-- Aircraft state vectors (position, velocity, heading)
-- Historical flight tracks
-- Airport departure and arrival information
-
-## Data Processing Pipeline
-
-The analysis workflow consists of the following stages:
-
-1. **Authentication**: Establish connection to OpenSky API using credentials
-2. **Query Execution**: Retrieve departure information for specified airport and time window
-3. **Track Retrieval**: Obtain detailed waypoint data for individual flights
-4. **Coordinate Transformation**: Convert geographic coordinates to metric distances
-5. **Trajectory Construction**: Create `trajr` trajectory objects for analysis
-6. **Statistical Computation**: Calculate trajectory metrics and aggregate statistics
-
-# Implementation
-
-The following section will demonstrate the implementation of the methodology using R code snippets. 
-The full analysis is also available in the GUI-based Shiny application.
-
-## Step 1: API Authentication
-
-The `getCredentials()` function retrieves API credentials from environment variables, ensuring secure credential management.
-
-```{r, purl=FALSE}
-creds <- getCredentials(
-  client_id = Sys.getenv("OPENSKY_CLIENT_ID"),
-  client_secret = Sys.getenv("OPENSKY_CLIENT_SECRET")
-)
-```
-
-## Step 2: Data Acquisition
-
-Recent departures from Frankfurt Airport (ICAO: EDDF) are queried for a two-hour time window. This airport was selected due to its high traffic volume, ensuring sufficient data availability.
-
-```{r demo-departures, purl=FALSE}
-time_now <- Sys.time()
-departures <- getAirportDepartures(
-  airport = "EDDF", 
-  startTime = time_now - hours(2), 
-  endTime = time_now - hours(1), 
-  credentials = creds
-)
-cat("Departures retrieved:", length(departures), "\n")
-```
-
-## Step 3: Track Data Retrieval
-
-The `getAircraftTrack()` function retrieves detailed waypoint data for individual aircraft. The function iterates through available departures until valid track data is obtained.
-
-```{r demo-track, purl=FALSE}
-route_df <- NULL
-icao <- "N/A"
-
-if (length(departures) > 0) {
-  for (i in seq_along(departures)) {
-    icao <- departures[[i]][["ICAO24"]]
-    dep_time <- departures[[i]][["departure_time"]]
-    route_df <- getAircraftTrack(icao, dep_time, creds)
-    if (!is.null(route_df) && nrow(route_df) >= 3) {
-      cat("Aircraft ICAO24:", icao, "\n")
-      cat("Track points acquired:", nrow(route_df), "\n")
-      break
-    }
-    Sys.sleep(1)
-  }
-}
-
-if (is.null(route_df)) {
-  cat("No valid track data available\n")
-}
-```
-
-## Step 4: Spatial Visualization
-
-The geographic trajectory is visualized on an interactive map with leaflet using the `createInteractiveMap()` function. Green and red markers indicate departure and current/final position, respectively.
-
-```{r demo-route-plot, fig.width=7, fig.height=5, purl=FALSE}
-if (!is.null(route_df)) {
-  createInteractiveMap(route_df)
-} else {
-  cat("Insufficient data for visualization\n")
-}
-```
-
-## Step 5: Vertical Profile Analysis
-
-The altitude profile reveals distinct flight phases: climb, cruise, and descent. This temporal representation provides insight into vertical movement patterns.
-
-```{r demo-altitude-plot, fig.width=7, fig.height=4, purl=FALSE}
-if (!is.null(route_df)) {
-  time_minutes <- (route_df$time - route_df$time[1]) / 60
-  plot(time_minutes, route_df$alt, type = "l", col = "red", lwd = 2,
-       main = paste("Altitude Profile -", icao),
-       xlab = "Elapsed Time (min)", ylab = "Barometric Altitude (m)")
-  grid()
-} else {
-  cat("Insufficient data for altitude analysis\n")
-}
-```
-
-## Step 6: Trajectory Object Construction
-
-The `getTrajFromRoute()` function transforms geographic coordinates into a metric coordinate system and constructs a `trajr` trajectory object. This transformation is necessary for accurate distance calculations.
-
-```{r demo-trajectory-plot, fig.width=7, fig.height=5, purl=FALSE}
-if (!is.null(route_df)) {
-  trj <- getTrajFromRoute(route_df)
-  plot(trj, main = paste("Metric Trajectory -", icao))
-  cat("Trajectory object created with", nrow(trj), "waypoints\n")
-} else {
-  cat("Insufficient data for trajectory construction\n")
-}
-```
-
-## Step 7: Single Flight Characterization
-
-The `calculateTrajectoryStats()` function computes comprehensive trajectory metrics. The table format provides a clear overview of individual flight characteristics.
-
-```{r demo-stats-table, purl=FALSE}
-if (!is.null(route_df)) {
-  stats_table <- calculateTrajectoryStats(route_df, icao = icao, format = "table")
-  knitr::kable(stats_table, caption = paste("Trajectory Metrics for Aircraft", icao))
-} else {
-  cat("Insufficient data for statistical analysis\n")
-}
-```
-
-## Step 8: Multi-Flight Data Collection
-
-To enable statistical inference, trajectory data is collected for multiple flights. The algorithm attempts to retrieve valid track data for up to five departures in this example.
-
-```{r demo-multiple-tracks, purl=FALSE}
-flight_data <- list()
-successful_flights <- 0
-
-if (length(departures) > 0) {
-  max_attempts <- min(10, length(departures))
-  
-  for (i in seq_len(max_attempts)) {
-    icao_temp <- departures[[i]][["ICAO24"]]
-    dep_time_temp <- departures[[i]][["departure_time"]]
-    
-    route_df_temp <- getAircraftTrack(icao_temp, dep_time_temp, creds)
-    
-    if (!is.null(route_df_temp) && nrow(route_df_temp) >= 3) {
-      stats <- calculateTrajectoryStats(route_df_temp, icao = icao_temp, format = "row")
-      if (!is.null(stats)) {
-        flight_data[[length(flight_data) + 1]] <- stats
-        successful_flights <- successful_flights + 1
-        cat("Flight", successful_flights, "| ICAO:", icao_temp, 
-            "| Waypoints:", nrow(route_df_temp), "\n")
-      }
-    }
-    
-    if (successful_flights >= 5) break
-  }
-  
-  if (length(flight_data) > 0) {
-    all_flights_stats <- do.call(rbind, flight_data)
-    cat("\nSample size (n):", nrow(all_flights_stats), "flights\n")
-  } else {
-    all_flights_stats <- NULL
-    cat("No valid trajectories obtained\n")
-  }
-} else {
-  all_flights_stats <- NULL
-  cat("No departure data available\n")
-}
-```
-
-# Results
-
-## Individual Flight Metrics
-
-The following table presents computed metrics for all successfully analyzed flights.
-
-```{r demo-all-stats-table, purl=FALSE}
-if (!is.null(all_flights_stats)) {
-  display_stats <- all_flights_stats
-  display_stats$diffusion_distance_km <- round(display_stats$diffusion_distance_km, 2)
-  display_stats$path_length_km <- round(display_stats$path_length_km, 2)
-  display_stats$straightness <- round(display_stats$straightness, 4)
-  display_stats$duration_min <- round(display_stats$duration_min, 1)
-  display_stats$mean_velocity_kmh <- round(display_stats$mean_velocity_kmh, 1)
-  display_stats$fractal_dimension <- round(display_stats$fractal_dimension, 4)
-  
-  knitr::kable(display_stats, caption = "Computed Trajectory Metrics",
-               col.names = c("ICAO24", "Displacement (km)", "Path Length (km)", 
-                           "Straightness", "Duration (min)", "Velocity (km/h)", "Fractal Dim."))
-} else {
-  cat("No data available for tabulation\n")
-}
-```
-
-## Descriptive Statistics
-
-The `calculateStatsSummary()` function computes central tendency and dispersion measures for each trajectory parameter.
-
-```{r demo-summary-stats, purl=FALSE}
-if (!is.null(all_flights_stats) && nrow(all_flights_stats) >= 2) {
-  summary_stats <- calculateStatsSummary(all_flights_stats)
-  knitr::kable(summary_stats, caption = "Descriptive Statistics Summary")
-} else {
-  cat("Minimum sample size (n >= 2) not met\n")
-}
-```
-
-## Distribution Analysis: Boxplots
-
-Boxplots provide a robust visualization of parameter distributions, displaying median, interquartile range, and potential outliers. The red diamond indicates the arithmetic mean.
-
-```{r demo-boxplots, fig.width=10, fig.height=8, purl=FALSE}
-if (!is.null(all_flights_stats) && nrow(all_flights_stats) >= 2) {
-  createBoxplots(all_flights_stats)
-} else {
-  cat("Minimum sample size (n >= 2) not met\n")
-}
-```
-
-## Distribution Analysis: Kernel Density Estimation
-
-Density plots employ kernel density estimation to approximate the probability distribution of each parameter. Vertical lines indicate mean (red, dashed) and median (green, dotted).
-
-```{r demo-density, fig.width=10, fig.height=8, purl=FALSE}
-if (!is.null(all_flights_stats) && nrow(all_flights_stats) >= 3) {
-  createDensityPlots(all_flights_stats)
-} else {
-  cat("Minimum sample size (n >= 3) not met for density estimation\n")
-}
-```
-
-## Distribution Analysis: Histograms
-
-Histograms with overlaid density curves provide an alternative visualization of parameter distributions.
-
-```{r demo-histograms, fig.width=10, fig.height=8, purl=FALSE}
-if (!is.null(all_flights_stats) && nrow(all_flights_stats) >= 3) {
-  createHistograms(all_flights_stats)
-} else {
-  cat("Minimum sample size (n >= 3) not met for histogram analysis\n")
-}
-```
-
-## Parameter Interpretation
-
-The `generateInterpretation()` function provides contextual analysis of the computed trajectory metrics.
-
-```{r demo-interpretation, purl=FALSE}
+```{r demo-interpretation, purl=FALSE, echo=TRUE}
 if (!is.null(all_flights_stats) && nrow(all_flights_stats) >= 2) {
   interpretation <- generateInterpretation(all_flights_stats)
   cat(interpretation)
 } else {
   cat("Minimum sample size (n >= 2) not met for interpretation\n")
+}
+```
+
+We also include an interactive map using `leaflet` to provide an intuitive display for the route of the aircraft.
+```{r vis-map}
+library(leaflet)
+createInteractiveMap <- function(route) {
+  leaflet(route) %>%
+    addTiles() %>%
+    addPolylines(lng=~lon, lat=~lat, color="blue", weight=3, opacity=0.8) %>%
+    addCircleMarkers(
+    lng = ~lon[1],
+    lat = ~lat[1],
+    color = "green",
+    radius = 6,
+    popup = "Origin"
+  ) %>%
+  addCircleMarkers(
+    lng = ~lon[nrow(route)],
+    lat = ~lat[nrow(route)],
+    color = "red",
+    radius = 6,
+    popup = "Destination"
+  )
 }
 ```
 
@@ -665,6 +627,9 @@ This project demonstrates the successful application of movement ecology metrics
 
 # References
 
-- OpenSky Network: https://opensky-network.org/
-- McLean, D.J. & Skowron Volponi, M.A. (2018). trajr: An R package for characterisation of animal trajectories. Ethology, 124(6), 440-448: https://CRAN.R-project.org/package=trajr
+1.  [The OpenSky Network. (2025). Internet archive of observed aircraft trajectories.](https://opensky-network.org/datasets/states/)
+2.  [Schäfer, M, Strohmeier, M, Lenders, V, Martinovic, I, Wilhelm, M. (2014). Bringing Up OpenSky: A Large-scale ADS-B Sensor Network for Research. In Proceedings of the 13th IEEE/ACM International Symposium on Information Processing in Sensor Networks (IPSN), pages 83-94.](https://opensky-network.org/files/publications/ipsn2014.pdf)
+3.  [Zheng, Y. (2015). Trajectory Data Mining: An Overview. ACM Transactions on Intelligent Systems and Technology, 61(3), 1–41.](https://doi.org/10.1145/2743025)
+4.  [Thulin, M. (2025). Modern Statistics with R: From wrangling and exploring data to inference and predictive modelling. CRC Press. Boca Raton, Fl.](https://modernstatisticswithr.com/)
+5.  [McLean, D J, and Skowron Volponi, M A. (2018). trajr: An R package for characterisation of animal trajectories. Ethology, 124, 440–448.](https://doi.org/10.1111/eth.12739)
 
