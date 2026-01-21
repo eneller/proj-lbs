@@ -603,6 +603,10 @@ createInteractiveMap <- function(route) {
   )
 }
 ```
+![Departures View](../doc/web-departures.png)
+![Single Flight View](../doc/web-single.png)
+![Statistics View](../doc/web-stats.png)
+![Interpretation View](../doc/web-interpretation.png)
 
 # Discussion
 

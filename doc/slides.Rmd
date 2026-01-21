@@ -41,4 +41,4 @@ Develop an R-based software, which will perform the following tasks:
 
 ---
 
-![web interface](web.png)
+![web interface](web-single.png)
