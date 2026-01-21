@@ -14,6 +14,12 @@ Develop an R-based software, which will perform the following tasks:
 
 6.  In the final project report, describe the problem, describe the method and the developed software support in the R environment, present and interpret the results, and form a conclusion.
 
+## Demo
+![Departures View](doc/web-departures.png)
+![Single Flight View](doc/web-single.png)
+![Statistics View](doc/web-stats.png)
+![Interpretation View](doc/web-interpretation.png)
+
 ## Resources
 
 1.  [The OpenSky Network. (2025). Internet archive of observed aircraft trajectories.](https://opensky-network.org/datasets/states/)
