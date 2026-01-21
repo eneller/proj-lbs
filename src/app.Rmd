@@ -1,0 +1,301 @@
+```{r backend, include=FALSE}
+# Load all functions from main.Rmd
+knitr::purl("./main.Rmd", output = tempfile(), quiet = TRUE) |> source()
+```
+
+# Web Interface
+```{r shiny}
+# Flight Trajectory Analysis - Shiny GUI Application
+# This app allows interactive selection of flights and displays trajectory analysis
+# All core functions are loaded from main.Rmd
+
+# UI Definition
+ui <- fluidPage(
+  titlePanel("Flight Trajectory Analysis - GUI"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      width = 3,
+      
+      h4("OpenSky Credentials"),
+      textInput("client_id", "Client ID:", value = Sys.getenv('OPENSKY_CLIENT_ID')),
+      passwordInput("client_secret", "Client Secret:", value = Sys.getenv('OPENSKY_CLIENT_SECRET')),
+      
+      hr(),
+      
+      h4("Airport Selection"),
+      textInput("airport_code", "Airport ICAO Code:", value = "EDDF"),
+      sliderInput("hours_back", "Hours back from now:", min = 1, max = 12, value = 1),
+      
+      actionButton("load_departures", "Load Departures", class = "btn-primary"),
+      
+      hr(),
+      
+      h4("Flight Selection"),
+      selectInput("selected_flight", "Select Flight:", choices = NULL),
+      
+      actionButton("analyze_flight", "Analyze Selected Flight", class = "btn-success"),
+      
+      hr(),
+      
+      h4("Batch Analysis"),
+      numericInput("batch_size", "Days of flights to analyze:", value = 5, min = 1, max = 30),
+      actionButton("batch_analyze", "Run Batch Analysis", class = "btn-warning"),
+      
+      hr(),
+      
+      verbatimTextOutput("status_text")
+    ),
+    
+    mainPanel(
+      width = 9,
+      
+      tabsetPanel(
+        id = "main_tabs",
+        
+        tabPanel("Departures List",
+                 h4("Available Departures"),
+                 tableOutput("departures_table")
+        ),
+        
+        tabPanel("Single Flight Analysis",
+                 fluidRow(
+                   column(6, leafletOutput("route_plot", height = "400px")),
+                   column(6, plotOutput("altitude_plot", height = "400px"))
+                 ),
+                 fluidRow(
+                   column(6, plotOutput("trajectory_plot", height = "400px")),
+                   column(6, 
+                          h4("Trajectory Characteristics"),
+                          tableOutput("characteristics_table"))
+                 )
+        ),
+        
+        tabPanel("Statistical Analysis",
+                 h4("Multiple Trajectory Statistics"),
+                 tableOutput("stats_summary_table"),
+                 hr(),
+                 fluidRow(
+                   column(12, plotOutput("boxplots", height = "500px"))
+                 ),
+                 fluidRow(
+                   column(12, plotOutput("density_plots", height = "500px"))
+                 ),
+                 fluidRow(
+                   column(12, plotOutput("histograms", height = "500px"))
+                 )
+        ),
+        
+        tabPanel("Interpretation",
+                 h4("Analysis Interpretation"),
+                 verbatimTextOutput("interpretation_text")
+        )
+      )
+    )
+  )
+)
+
+# Server Logic
+server <- function(input, output, session) {
+  
+  # Reactive values to store data
+  rv <- reactiveValues(
+    creds = NULL,
+    departures = NULL,
+    departures_df = NULL,
+    current_route = NULL,
+    current_trj = NULL,
+    current_icao = NULL,
+    trajectory_stats_df = NULL
+  )
+  
+  # Status message
+  status <- reactiveVal("Ready. Enter credentials and load departures.")
+  
+  output$status_text <- renderText({
+    status()
+  })
+  
+  # Load departures
+  observeEvent(input$load_departures, {
+    req(input$client_id, input$client_secret, input$airport_code)
+    
+    status("Loading departures...")
+    
+    tryCatch({
+      # Use getCredentials from main.Rmd
+      rv$creds <- getCredentials(
+        client_id = input$client_id,
+        client_secret = input$client_secret
+      )
+      
+      time_now <- Sys.time()
+      rv$departures <- getAirportDepartures(
+        airport = input$airport_code,
+        startTime = time_now - hours(input$hours_back),
+        endTime = time_now,
+        credentials = rv$creds
+      )
+      
+      if (length(rv$departures) > 0) {
+        # Create departures dataframe for display
+        departures_list <- lapply(seq_along(rv$departures), function(i) {
+          dep <- rv$departures[[i]]
+          data.frame(
+            Index = i,
+            ICAO24 = dep[["ICAO24"]] %||% NA,
+            #FIXME Callsign, Origin, Destination
+            Callsign = dep[["callsign"]] %||% NA,
+            Origin = dep[["estDepartureAirport"]] %||% NA,
+            Destination = dep[["estArrivalAirport"]] %||% NA,
+            DepartureTime = as.POSIXct(dep[["departure_time"]] %||% NA, origin = "1970-01-01"),
+            stringsAsFactors = FALSE
+          )
+        })
+        rv$departures_df <- do.call(rbind, departures_list)
+        
+        # Update flight selection dropdown
+        choices <- setNames(
+          seq_along(rv$departures),
+          paste(rv$departures_df$ICAO24, "-", rv$departures_df$Callsign, 
+                "(", rv$departures_df$Destination, ")")
+        )
+        updateSelectInput(session, "selected_flight", choices = choices)
+        
+        status(paste("Loaded", length(rv$departures), "departures from", input$airport_code))
+      } else {
+        status("No departures found for the selected time period.")
+      }
+      
+    }, error = function(e) {
+      status(paste("Error loading departures:", e$message))
+    })
+  })
+  
+  # Display departures table
+  output$departures_table <- renderTable({
+    req(rv$departures_df)
+    rv$departures_df
+  })
+  
+  # Analyze selected flight
+  observeEvent(input$analyze_flight, {
+    req(rv$departures, input$selected_flight, rv$creds)
+    
+    status("Analyzing selected flight...")
+    
+    tryCatch({
+      idx <- as.integer(input$selected_flight)
+      dep <- rv$departures[[idx]]
+      icao24 <- dep[["ICAO24"]]
+      dep_time <- dep[["departure_time"]]
+      
+      rv$current_icao <- icao24
+      
+      # Use getAircraftTrack from main.Rmd
+      route_df <- getAircraftTrack(icao24, dep_time, rv$creds)
+      
+      if (is.null(route_df) || nrow(route_df) < 2) {
+        status(paste("No path data available for", icao24))
+        return()
+      }
+      
+      rv$current_route <- route_df
+      
+      # Use getTrajFromRoute from main.Rmd
+      rv$current_trj <- getTrajFromRoute(route_df)
+      status(paste("Successfully analyzed", icao24, "with", nrow(route_df), "points"))
+      
+      # Switch to analysis tab
+      updateTabsetPanel(session, "main_tabs", selected = "Single Flight Analysis")
+      
+    }, error = function(e) {
+      status(paste("Error analyzing flight:", e$message))
+    })
+  })
+  
+  # Route plot
+  output$route_plot <- renderLeaflet({
+    req(rv$current_route)
+    createInteractiveMap(rv$current_route)
+  })
+  
+  # Altitude plot
+  output$altitude_plot <- renderPlot({
+    req(rv$current_route)
+    plot(rv$current_route$time, rv$current_route$alt, type = "l", col = "red", lwd = 2,
+         main = paste("Altitude Profile of", rv$current_icao),
+         xlab = "Time (Unix)", ylab = "Altitude (m)")
+  })
+  
+  # Trajectory plot
+  output$trajectory_plot <- renderPlot({
+    req(rv$current_trj)
+    plot(rv$current_trj, main = paste("Trajectory of", rv$current_icao))
+  })
+  
+  # Characteristics table
+  output$characteristics_table <- renderTable({
+    req(rv$current_trj)
+    calculateTrajectoryStats(rv$current_trj, format = "table")
+  })
+  
+  # Batch analysis
+  observeEvent(input$batch_analyze, {
+    req(rv$departures, rv$creds)
+    
+    status("Running batch analysis...")
+    
+    tryCatch({
+      
+      withProgress(message = 'Analyzing flights', value = 0, {
+        all_trajectories <- getAircraftTrajectories(rv$current_icao, time = Sys.time(), creds, days = input$batch_size)
+      })
+      
+      if (length(all_trajectories) > 0) {
+        rv$trajectory_stats_df <- do.call(rbind, all_trajectories)
+        status(paste("Batch analysis complete:", nrow(rv$trajectory_stats_df), "trajectories analyzed"))
+        updateTabsetPanel(session, "main_tabs", selected = "Statistical Analysis")
+      } else {
+        status("No trajectory data collected in batch analysis")
+      }
+      
+    }, error = function(e) {
+      status(paste("Error in batch analysis:", e$message))
+    })
+  })
+  
+  # Statistics summary table - use calculateStatsSummary from main.Rmd
+  output$stats_summary_table <- renderTable({
+    req(rv$trajectory_stats_df)
+    calculateStatsSummary(rv$trajectory_stats_df)
+  })
+  
+  # Boxplots - use createBoxplots from main.Rmd
+  output$boxplots <- renderPlot({
+    req(rv$trajectory_stats_df)
+    createBoxplots(rv$trajectory_stats_df)
+  })
+  
+  # Density plots - use createDensityPlots from main.Rmd
+  output$density_plots <- renderPlot({
+    req(rv$trajectory_stats_df)
+    createDensityPlots(rv$trajectory_stats_df)
+  })
+  
+  # Histograms - use createHistograms from main.Rmd
+  output$histograms <- renderPlot({
+    req(rv$trajectory_stats_df)
+    createHistograms(rv$trajectory_stats_df)
+  })
+  
+  # Interpretation text - use generateInterpretation from main.Rmd
+  output$interpretation_text <- renderText({
+    req(rv$trajectory_stats_df)
+    generateInterpretation(rv$trajectory_stats_df)
+  })
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
+```
